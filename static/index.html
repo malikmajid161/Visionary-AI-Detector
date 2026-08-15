@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visionary AI | Real-Time Object Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="bg-mesh">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <main class="app-container">
+        <header class="glass-panel header">
+            <div class="logo">
+                <i class="fa-solid fa-eye"></i>
+                <span>Visionary AI</span>
+            </div>
+            <div class="badge">Powered by YOLOv8</div>
+        </header>
+
+        <div class="content-grid">
+            <div class="glass-panel main-view">
+                <div class="controls">
+                    <button id="btn-image" class="active"><i class="fa-regular fa-image"></i> Image</button>
+                    <button id="btn-camera"><i class="fa-solid fa-video"></i> Live Camera</button>
+                </div>
+                
+                <div class="view-area" id="view-area">
+                    <!-- Image Upload View -->
+                    <div id="image-upload-view" class="view-state active">
+                        <div class="upload-zone" id="upload-zone">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <h3>Drag & drop an image or click to browse</h3>
+                            <p>Supports JPG, PNG, WEBP</p>
+                            <input type="file" id="file-input" accept="image/*" hidden>
+                        </div>
+                    </div>
+                    
+                    <!-- Result View -->
+                    <div id="result-view" class="view-state hidden">
+                        <img id="result-image" src="" alt="Detection Result">
+                        <div class="action-bar">
+                            <button id="btn-reset" class="btn-primary"><i class="fa-solid fa-rotate-right"></i> Try Another</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Camera View -->
+                    <div id="camera-view" class="view-state hidden">
+                        <video id="webcam-video" autoplay playsinline hidden></video>
+                        <img id="stream-result" src="" alt="Live Stream">
+                        <div class="camera-overlay">
+                            <div class="pulse-indicator"></div>
+                            <span>Live Analysis</span>
+                        </div>
+                        <div class="action-bar">
+                            <button id="btn-stop-camera" class="btn-danger"><i class="fa-solid fa-stop"></i> Stop Stream</button>
+                        </div>
+                    </div>
+
+                    <!-- Loader -->
+                    <div id="loader" class="view-state hidden">
+                        <div class="spinner"></div>
+                        <p>AI is analyzing...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-panel sidebar">
+                <h2><i class="fa-solid fa-chart-pie"></i> Detection Stats</h2>
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <span class="stat-value" id="total-objects">0</span>
+                        <span class="stat-label">Total Objects</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="fps-counter">--</span>
+                        <span class="stat-label">FPS</span>
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <h3>Object Breakdown</h3>
+                <div class="object-list" id="object-list">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-box-open"></i>
+                        <p>No objects detected yet. Upload an image or start the camera.</p>
+                    </div>
+                    <!-- Items will be injected here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
