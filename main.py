@@ -25,7 +25,7 @@ log = logging.getLogger("VisionAI")
 # ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR   = Path(__file__).parent
 STATIC_DIR = BASE_DIR / "static"
-MODEL_DIR  = BASE_DIR.parent / "models"
+MODEL_DIR  = BASE_DIR / "models"
 MODEL_PATH = MODEL_DIR / "yolo11l.pt"
 
 # ── Global model reference ────────────────────────────────────────────────────

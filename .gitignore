@@ -5,3 +5,8 @@ uploads/
 *.pt
 yolov8n.pt
 .env
+
+models/
+outputs/
+uploads/
+__pycache__/
