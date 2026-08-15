@@ -8,11 +8,13 @@ A premium, glassmorphic real-time object detection and counting system powered b
 
 ## 📸 Screenshots
 
-*(Add your best screenshots here by saving them in a `docs/` folder and linking them below)*
+
 
 <div align="center">
-  <img src="docs/screenshot1.png" width="400" alt="High Density Crowd Detection" />
-  <img src="docs/screenshot2.png" width="400" alt="Traffic Monitoring" />
+  <img src="docs/screenshot1.png" width="400" alt="Detection 1" />
+  <img src="docs/screenshot2.png" width="400" alt="Detection 2" />
+  <img src="docs/screenshot3.png" width="400" alt="Detection 3" />
+  <img src="docs/screenshot4.png" width="400" alt="Detection 4" />
 </div>
 
 ## 🚀 Features
