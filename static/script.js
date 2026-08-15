@@ -1,24 +1,44 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Elements
     const btnImage = document.getElementById('btn-image');
+    const btnVideo = document.getElementById('btn-video');
     const btnCamera = document.getElementById('btn-camera');
+    
     const viewUpload = document.getElementById('image-upload-view');
     const viewResult = document.getElementById('result-view');
+    const viewVideo = document.getElementById('video-view');
     const viewCamera = document.getElementById('camera-view');
     const viewLoader = document.getElementById('loader');
     
-    const uploadZone = document.getElementById('upload-zone');
-    const fileInput = document.getElementById('file-input');
+    const uploadZone = document.getElementById('upload-area');
+    const fileInput = document.getElementById('image-input');
     const resultImage = document.getElementById('result-image');
     const btnReset = document.getElementById('btn-reset');
+    const btnNew = document.getElementById('btn-new');
     
-    const videoElement = document.getElementById('webcam-video');
+    const videoUploadArea = document.getElementById('video-upload-area');
+    const videoInput = document.getElementById('video-input');
+    const videoMediaContainer = document.getElementById('video-media-container');
+    const uploadedVideo = document.getElementById('uploaded-video');
+    const videoStreamResult = document.getElementById('video-stream-result');
+    const btnStopVideo = document.getElementById('btn-stop-video');
+    
+    const webcamVideo = document.getElementById('webcam-video');
     const streamResult = document.getElementById('stream-result');
     const btnStopCamera = document.getElementById('btn-stop-camera');
     
     const totalObjectsEl = document.getElementById('total-objects');
     const fpsCounterEl = document.getElementById('fps-counter');
     const objectListEl = document.getElementById('object-list');
+    const typesCountEl = document.getElementById('types-count');
+    const confSlider = document.getElementById('conf-slider');
+    const confVal = document.getElementById('conf-val');
+
+    if (confSlider) {
+        confSlider.addEventListener('input', (e) => {
+            if(confVal) confVal.textContent = e.target.value + '%';
+        });
+    }
 
     // State
     let currentStream = null;
@@ -26,228 +46,246 @@ document.addEventListener('DOMContentLoaded', () => {
     let isStreaming = false;
     let framesProcessed = 0;
     let lastFpsTime = Date.now();
+    let currentVideoTarget = null; // Either uploadedVideo or webcamVideo
+    let currentResultTarget = null;
 
     // Tab Switching
     function switchTab(tab) {
-        btnImage.classList.remove('active');
-        btnCamera.classList.remove('active');
+        if(btnImage) btnImage.classList.remove('active');
+        if(btnVideo) btnVideo.classList.remove('active');
+        if(btnCamera) btnCamera.classList.remove('active');
         
-        viewUpload.classList.add('hidden');
-        viewResult.classList.add('hidden');
-        viewCamera.classList.add('hidden');
-        viewLoader.classList.add('hidden');
+        if(viewUpload) viewUpload.classList.remove('active');
+        if(viewResult) viewResult.classList.remove('active');
+        if(viewVideo) viewVideo.classList.remove('active');
+        if(viewCamera) viewCamera.classList.remove('active');
+        if(viewLoader) viewLoader.classList.remove('active');
+
+        stopStreaming();
 
         if (tab === 'image') {
-            btnImage.classList.add('active');
-            viewUpload.classList.remove('hidden');
-            stopCamera();
+            if(btnImage) btnImage.classList.add('active');
+            if(viewUpload) viewUpload.classList.add('active');
+        } else if (tab === 'video') {
+            if(btnVideo) btnVideo.classList.add('active');
+            if(viewVideo) viewVideo.classList.add('active');
+            if(videoUploadArea) videoUploadArea.style.display = 'flex';
+            if(videoMediaContainer) videoMediaContainer.style.display = 'none';
+            if(btnStopVideo) btnStopVideo.parentElement.style.display = 'none';
         } else if (tab === 'camera') {
-            btnCamera.classList.add('active');
-            viewCamera.classList.remove('hidden');
-            startCamera();
+            if(btnCamera) btnCamera.classList.add('active');
+            if(viewCamera) viewCamera.classList.add('active');
+            startWebcam();
         }
         
         resetStats();
     }
 
-    btnImage.addEventListener('click', () => switchTab('image'));
-    btnCamera.addEventListener('click', () => switchTab('camera'));
+    if(btnImage) btnImage.addEventListener('click', () => switchTab('image'));
+    if(btnVideo) btnVideo.addEventListener('click', () => switchTab('video'));
+    if(btnCamera) btnCamera.addEventListener('click', () => switchTab('camera'));
 
     // --- Image Upload Logic ---
-    uploadZone.addEventListener('click', () => fileInput.click());
+    if(uploadZone) {
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleImageUpload(e.dataTransfer.files[0]);
+        });
+    }
     
-    uploadZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadZone.classList.add('dragover');
-    });
-    
-    uploadZone.addEventListener('dragleave', () => {
-        uploadZone.classList.remove('dragover');
-    });
-    
-    uploadZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) {
-            handleImageUpload(e.dataTransfer.files[0]);
-        }
-    });
-    
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) {
-            handleImageUpload(e.target.files[0]);
-        }
-    });
+    if(fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleImageUpload(e.target.files[0]);
+        });
+    }
 
     async function handleImageUpload(file) {
-        if (!file.type.startsWith('image/')) {
-            alert('Please upload an image file.');
-            return;
-        }
-
-        viewUpload.classList.add('hidden');
-        viewLoader.classList.remove('hidden');
+        if (!file.type.startsWith('image/')) { alert('Please upload an image.'); return; }
+        if(viewUpload) viewUpload.classList.remove('active');
+        if(viewLoader) viewLoader.classList.add('active');
 
         const formData = new FormData();
         formData.append('file', file);
+        let cv = 0.25; if(confSlider) cv = confSlider.value / 100;
+        formData.append('conf', cv);
 
         try {
-            const response = await fetch('/api/detect/image', {
-                method: 'POST',
-                body: formData
-            });
+            const res = await fetch('/api/detect/image', { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('API Error');
+            const data = await res.json();
             
-            if (!response.ok) throw new Error('Detection failed');
-            
-            const data = await response.json();
-            
-            // Show result
             resultImage.src = data.image;
-            viewLoader.classList.add('hidden');
-            viewResult.classList.remove('hidden');
+            if(viewLoader) viewLoader.classList.remove('active');
+            if(viewResult) viewResult.classList.add('active');
             
-            updateStats(data.counts, data.total_objects);
-            fpsCounterEl.textContent = '--';
-            
+            updateStats(data.counts, data.total);
+            if(fpsCounterEl) fpsCounterEl.textContent = '--';
         } catch (error) {
             console.error(error);
-            alert('An error occurred during detection.');
-            viewLoader.classList.add('hidden');
-            viewUpload.classList.remove('hidden');
+            alert('Error during detection.');
+            if(viewLoader) viewLoader.classList.remove('active');
+            if(viewUpload) viewUpload.classList.add('active');
         }
     }
 
-    btnReset.addEventListener('click', () => {
-        viewResult.classList.add('hidden');
-        viewUpload.classList.remove('hidden');
-        fileInput.value = '';
-        resetStats();
+    if(btnNew) btnNew.addEventListener('click', () => switchTab('image'));
+    if(btnReset) btnReset.addEventListener('click', () => {
+        const link = document.createElement('a'); link.download = 'detection.jpg';
+        link.href = resultImage.src; link.click();
     });
 
-    // --- Camera Stream Logic ---
-    async function startCamera() {
+    // --- Video Upload Logic ---
+    if(videoUploadArea) {
+        videoUploadArea.addEventListener('click', () => videoInput.click());
+        videoUploadArea.addEventListener('dragover', (e) => { e.preventDefault(); videoUploadArea.classList.add('dragover'); });
+        videoUploadArea.addEventListener('dragleave', () => { videoUploadArea.classList.remove('dragover'); });
+        videoUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault(); videoUploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleVideoUpload(e.dataTransfer.files[0]);
+        });
+    }
+    
+    if(videoInput) {
+        videoInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleVideoUpload(e.target.files[0]);
+        });
+    }
+
+    function handleVideoUpload(file) {
+        if (!file.type.startsWith('video/')) return;
+        const url = URL.createObjectURL(file);
+        uploadedVideo.src = url;
+        uploadedVideo.volume = 0;
+        
+        videoUploadArea.style.display = 'none';
+        videoMediaContainer.style.display = 'block';
+        btnStopVideo.parentElement.style.display = 'flex';
+        
+        currentVideoTarget = uploadedVideo;
+        currentResultTarget = videoStreamResult;
+        
+        uploadedVideo.play();
+        isStreaming = true;
+        connectWebSocket();
+    }
+    
+    if(btnStopVideo) btnStopVideo.addEventListener('click', () => switchTab('video'));
+
+    // --- Webcam Logic ---
+    async function startWebcam() {
         try {
-            currentStream = await navigator.mediaDevices.getUserMedia({ 
-                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "environment" } 
-            });
-            videoElement.srcObject = currentStream;
-            videoElement.play();
+            currentStream = await navigator.mediaDevices.getUserMedia({ video: { ideal: 640 } });
+            webcamVideo.srcObject = currentStream;
+            webcamVideo.play();
+            
+            currentVideoTarget = webcamVideo;
+            currentResultTarget = streamResult;
             
             isStreaming = true;
             connectWebSocket();
-            
-        } catch (error) {
-            console.error("Camera access error:", error);
-            alert("Could not access the camera.");
-            switchTab('image');
+        } catch (e) {
+            alert('Camera error'); switchTab('image');
         }
-    }
-
-    function stopCamera() {
-        isStreaming = false;
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-            currentStream = null;
-        }
-        if (ws) {
-            ws.close();
-            ws = null;
-        }
-        streamResult.src = '';
     }
     
-    btnStopCamera.addEventListener('click', () => {
-        switchTab('image');
-    });
+    if(btnStopCamera) btnStopCamera.addEventListener('click', () => switchTab('image'));
+
+    // --- Streaming Shared ---
+    function stopStreaming() {
+        isStreaming = false;
+        if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+        if(uploadedVideo) { uploadedVideo.pause(); uploadedVideo.src = ''; }
+        if(webcamVideo) { webcamVideo.pause(); webcamVideo.srcObject = null; }
+        if (ws) { ws.close(); ws = null; }
+        if(videoStreamResult) videoStreamResult.src = '';
+        if(streamResult) streamResult.src = '';
+    }
 
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${window.location.host}/api/detect/stream`);
-        
-        ws.onopen = () => {
-            console.log('WebSocket Connected');
-            sendFrame();
-        };
-        
+        ws = new WebSocket(protocol + '//' + window.location.host + '/api/detect/stream');
+        ws.onopen = () => { console.log('WS Open'); sendFrame(); };
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            streamResult.src = data.image;
-            updateStats(data.counts, data.total_objects);
+            if(currentResultTarget) currentResultTarget.src = data.image;
+            updateStats(data.counts, data.total);
             
-            // Calculate FPS
             framesProcessed++;
             const now = Date.now();
             if (now - lastFpsTime >= 1000) {
-                fpsCounterEl.textContent = framesProcessed;
-                framesProcessed = 0;
-                lastFpsTime = now;
-            }
-            
-            if (isStreaming) {
-                requestAnimationFrame(sendFrame);
+                if(fpsCounterEl) fpsCounterEl.textContent = framesProcessed;
+                framesProcessed = 0; lastFpsTime = now;
             }
         };
-        
-        ws.onclose = () => {
-            console.log('WebSocket Disconnected');
-            if (isStreaming) {
-                setTimeout(connectWebSocket, 1000); // Reconnect
-            }
-        };
+        ws.onclose = () => { if(isStreaming) setTimeout(connectWebSocket, 1000); };
     }
 
     function sendFrame() {
         if (!isStreaming || !ws || ws.readyState !== WebSocket.OPEN) return;
         
-        // Only send if video is ready
-        if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+        if (currentVideoTarget && currentVideoTarget.readyState >= 2) {
             const canvas = document.createElement('canvas');
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
+            canvas.width = currentVideoTarget.videoWidth;
+            canvas.height = currentVideoTarget.videoHeight;
             const ctx = canvas.getContext('2d');
-            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentVideoTarget, 0, 0, canvas.width, canvas.height);
             
-            // Compress heavily for real-time
             const dataURL = canvas.toDataURL('image/jpeg', 0.6);
-            ws.send(dataURL);
+            let cv = 0.25; if(confSlider) cv = confSlider.value / 100;
+            
+            ws.send(JSON.stringify({ image: dataURL, conf: cv }));
+            
+            // Frame skip / lag mitigation: Wait 30ms before asking for next frame
+            setTimeout(() => requestAnimationFrame(sendFrame), 30);
         } else {
             requestAnimationFrame(sendFrame);
         }
     }
 
-    // --- UI Updates ---
     function updateStats(counts, total) {
-        totalObjectsEl.textContent = total;
+        if(totalObjectsEl) totalObjectsEl.textContent = total;
         
-        if (Object.keys(counts).length === 0) {
-            objectListEl.innerHTML = `
-                <div class="empty-state" style="padding: 1rem 0;">
-                    <i class="fa-solid fa-check"></i>
-                    <p style="margin-top: 0.5rem; font-size: 0.9rem;">No objects detected</p>
-                </div>`;
-            return;
+        const densityEl = document.getElementById('density-level');
+        if (densityEl) {
+            if (total > 30) { densityEl.textContent = 'High'; densityEl.style.color = '#ef4444'; }
+            else if (total > 10) { densityEl.textContent = 'Medium'; densityEl.style.color = '#f59e0b'; }
+            else { densityEl.textContent = 'Low'; densityEl.style.color = '#10b981'; }
+        }
+
+        const dominantEl = document.getElementById('dominant-object');
+        if (dominantEl) {
+            if (Object.keys(counts).length > 0) {
+                let maxClass = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                dominantEl.textContent = maxClass;
+            } else {
+                dominantEl.textContent = '--';
+            }
         }
         
-        objectListEl.innerHTML = '';
-        for (const [objName, count] of Object.entries(counts)) {
-            const item = document.createElement('div');
-            item.className = 'object-item';
-            item.innerHTML = `
-                <span class="obj-name">${objName}</span>
-                <span class="obj-count">${count}</span>
-            `;
-            objectListEl.appendChild(item);
+        if (Object.keys(counts).length === 0) {
+            if(typesCountEl) typesCountEl.textContent = '0';
+            if(objectListEl) objectListEl.innerHTML = '<div class="empty-state"><i class="fa-solid fa-check"></i><p>No objects detected</p></div>';
+            return;
+        }
+
+        if(typesCountEl) typesCountEl.textContent = Object.keys(counts).length;
+        if(objectListEl) {
+            objectListEl.innerHTML = '';
+            for (const [cls, count] of Object.entries(counts)) {
+                const row = document.createElement('div');
+                row.className = 'object-item';
+                row.innerHTML = '<span class="obj-name">' + cls + '</span><span class="obj-count">' + count + '</span>';
+                objectListEl.appendChild(row);
+            }
         }
     }
 
     function resetStats() {
-        totalObjectsEl.textContent = '0';
-        fpsCounterEl.textContent = '--';
-        objectListEl.innerHTML = `
-            <div class="empty-state">
-                <i class="fa-solid fa-box-open"></i>
-                <p>No objects detected yet. Upload an image or start the camera.</p>
-            </div>
-        `;
+        updateStats({}, 0);
+        if(fpsCounterEl) fpsCounterEl.textContent = '--';
     }
 });

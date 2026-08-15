@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visionary AI | Real-Time Object Detection</title>
+    <title>Visionary AI | Real-Time Object Counter</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css">
@@ -17,87 +17,169 @@
 
     <main class="app-container">
         <header class="glass-panel header">
-            <div class="logo">
-                <i class="fa-solid fa-eye"></i>
-                <span>Visionary AI</span>
+            <div class="logo-group">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>Visionary AI</h1>
+                    <p>REAL-TIME OBJECT COUNTER</p>
+                </div>
             </div>
-            <div class="badge">Powered by YOLOv8</div>
+            <div class="model-badge">
+                <div class="pulse-dot"></div>
+                Active
+            </div>
         </header>
 
         <div class="content-grid">
             <div class="glass-panel main-view">
-                <div class="controls">
-                    <button id="btn-image" class="active"><i class="fa-regular fa-image"></i> Image</button>
-                    <button id="btn-camera"><i class="fa-solid fa-video"></i> Live Camera</button>
+                <div class="view-header">
+                    <div class="tab-controls">
+                        <button id="btn-image" class="tab-btn active"><i class="fa-regular fa-image"></i> Image</button>
+                        <button id="btn-video" class="tab-btn"><i class="fa-solid fa-file-video"></i> Video Upload</button>
+                        <button id="btn-camera" class="tab-btn"><i class="fa-solid fa-video"></i> Webcam</button>
+                    </div>
+                    
+                    <div class="advanced-controls">
+                        <div class="slider-group">
+                            <label for="conf-slider"><i class="fa-solid fa-sliders"></i> Sensitivity: <span id="conf-val">25%</span></label>
+                            <input type="range" id="conf-slider" class="premium-slider" min="1" max="100" value="25">
+                        </div>
+                        <div class="toggle-group">
+                            <label class="switch">
+                                <input type="checkbox" id="audio-toggle">
+                                <span class="slider-round"></span>
+                            </label>
+                            <span>Audio</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="view-area" id="view-area">
                     <!-- Image Upload View -->
                     <div id="image-upload-view" class="view-state active">
-                        <div class="upload-zone" id="upload-zone">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <h3>Drag & drop an image or click to browse</h3>
-                            <p>Supports JPG, PNG, WEBP</p>
-                            <input type="file" id="file-input" accept="image/*" hidden>
+                        <div class="upload-zone" id="upload-area">
+                            <div class="upload-icon-wrapper">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <h3>Upload Image</h3>
+                            <p class="upload-sub">Drag & drop your image here or <span class="highlight">Browse</span></p>
+                            <span class="upload-format">Supports JPG, PNG</span>
+                            <input type="file" id="image-input" accept="image/*" hidden>
                         </div>
                     </div>
                     
                     <!-- Result View -->
                     <div id="result-view" class="view-state hidden">
-                        <img id="result-image" src="" alt="Detection Result">
+                        <div class="media-container">
+                            <img id="result-image" src="" alt="Detection Result">
+                        </div>
                         <div class="action-bar">
-                            <button id="btn-reset" class="btn-primary"><i class="fa-solid fa-rotate-right"></i> Try Another</button>
+                            <button id="btn-reset" class="btn-primary"><i class="fa-solid fa-download"></i> Save Image</button>
+                            <button id="btn-new" class="btn-primary"><i class="fa-solid fa-rotate-right"></i> Analyze New</button>
                         </div>
                     </div>
                     
+                    <!-- Video Upload View -->
+                    <div id="video-view" class="view-state hidden">
+                        <div class="upload-zone" id="video-upload-area" style="margin-bottom: 20px;">
+                            <div class="upload-icon-wrapper">
+                                <i class="fa-solid fa-file-video"></i>
+                            </div>
+                            <h3>Upload Video</h3>
+                            <p class="upload-sub">Drag & drop your video here or <span class="highlight">Browse</span></p>
+                            <span class="upload-format">Supports MP4, M4V</span>
+                            <input type="file" id="video-input" accept="video/mp4,video/x-m4v,video/*" hidden>
+                        </div>
+                        <div class="media-container" id="video-media-container" style="display: none;">
+                            <video id="uploaded-video" playsinline hidden controls></video>
+                            <img id="video-stream-result" src="" alt="Video Processing">
+                            <div class="camera-status-tag">
+                                <div class="live-dot"></div> Processing Video
+                            </div>
+                        </div>
+                        <div class="action-bar" id="video-action-bar" style="display: none; margin-top: 15px;">
+                            <button id="btn-stop-video" class="btn-danger"><i class="fa-solid fa-stop"></i> Stop Video</button>
+                        </div>
+                    </div>
+
                     <!-- Camera View -->
                     <div id="camera-view" class="view-state hidden">
-                        <video id="webcam-video" autoplay playsinline hidden></video>
-                        <img id="stream-result" src="" alt="Live Stream">
-                        <div class="camera-overlay">
-                            <div class="pulse-indicator"></div>
-                            <span>Live Analysis</span>
+                        <div class="media-container">
+                            <video id="webcam-video" autoplay playsinline hidden></video>
+                            <img id="stream-result" src="" alt="Live Stream">
+                            <div class="camera-status-tag">
+                                <div class="live-dot"></div> Live Camera
+                            </div>
                         </div>
-                        <div class="action-bar">
-                            <button id="btn-stop-camera" class="btn-danger"><i class="fa-solid fa-stop"></i> Stop Stream</button>
+                        <div class="action-bar" style="margin-top: 15px;">
+                            <button id="btn-stop-camera" class="btn-danger"><i class="fa-solid fa-stop"></i> Stop Camera</button>
                         </div>
                     </div>
 
                     <!-- Loader -->
                     <div id="loader" class="view-state hidden">
-                        <div class="spinner"></div>
-                        <p>AI is analyzing...</p>
+                        <div class="loader-spinner"></div>
+                        <h4>Processing Media</h4>
+                        <p>AI is detecting objects...</p>
                     </div>
                 </div>
             </div>
 
             <div class="glass-panel sidebar">
-                <h2><i class="fa-solid fa-chart-pie"></i> Detection Stats</h2>
-                <div class="stats-overview">
+                <h2><i class="fa-solid fa-chart-simple"></i> Results Panel</h2>
+                
+                <div class="stats-grid">
                     <div class="stat-card">
-                        <span class="stat-value" id="total-objects">0</span>
-                        <span class="stat-label">Total Objects</span>
+                        <div class="stat-icon object-icon">
+                            <i class="fa-solid fa-cube"></i>
+                        </div>
+                        <div class="stat-content" style="display: flex; flex-direction: column; gap: 0.2rem;">
+                            <span class="stat-value" id="total-objects">0</span>
+                            <span class="stat-label">Objects Counted</span>
+                        </div>
                     </div>
+                    
                     <div class="stat-card">
-                        <span class="stat-value" id="fps-counter">--</span>
-                        <span class="stat-label">FPS</span>
+                        <div class="stat-icon fps-icon">
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                        <div class="stat-content" style="display: flex; flex-direction: column; gap: 0.2rem;">
+                            <span class="stat-value" id="dominant-object" style="font-size: 1.1rem; text-transform: capitalize;">--</span>
+                            <span class="stat-label">Main Subject</span>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon" style="color: var(--accent-1); background: rgba(30, 215, 96, 0.1);">
+                            <i class="fa-solid fa-people-group"></i>
+                        </div>
+                        <div class="stat-content" style="display: flex; flex-direction: column; gap: 0.2rem;">
+                            <span class="stat-value" id="density-level" style="font-size: 1.1rem;">Low</span>
+                            <span class="stat-label">Traffic Density</span>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="divider"></div>
                 
-                <h3>Object Breakdown</h3>
-                <div class="object-list" id="object-list">
-                    <div class="empty-state">
-                        <i class="fa-solid fa-box-open"></i>
-                        <p>No objects detected yet. Upload an image or start the camera.</p>
+                <div class="flex-expand">
+                    <div class="section-header">
+                        <h3>DETECTED ITEMS</h3>
+                        <span class="class-count-badge"><span id="types-count">0</span> types</span>
                     </div>
-                    <!-- Items will be injected here -->
+                    <div class="object-list" id="object-list">
+                        <div class="empty-state">
+                            <i class="fa-solid fa-box-open"></i>
+                            <p>Awaiting media input for detection.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
-    <script src="/static/script.js"></script>
+    <script src="/static/script.js?v=4"></script>
 </body>
 </html>
