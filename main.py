@@ -25,7 +25,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Load YOLO model
-model = YOLO('yolov8n.pt')  # Downloads the model if not present
+model = YOLO('best.pt')  # Uses the local model file best.pt
 
 # Create uploads and outputs dirs
 os.makedirs("uploads", exist_ok=True)
